@@ -1,0 +1,294 @@
+#!/usr/bin/env ruby
+=begin
+  mxc2
+
+  Copyright (c) 2007 Daniel Kamiński
+
+  This is free software; you can copy and distribute and modify
+  this program under the term of Ruby's License
+  (http://www.ruby-lang.org/LINCENSE.txt)
+
+=end
+
+require "Qt"
+require "xmmsclient"
+require "jcode"
+$KCODE='u'
+
+class MxcWin < Qt::Widget
+
+  slots "on_mxclient2_id_changed(int)", "on_mxclient2_playing()", "on_mxclient2_stopped()", "on_mxclient2_paused()", "on_mlibTreeWidget_itemClicked(QTreeWidgetItem*, int)", "on_collView_activated(QModelIndex)", "on_queryEntry_returnPressed()", "on_playlistView_customContextMenuRequested(QPoint)", "context_delete()", "context_play()", "on_mxclient2_collectionRemoved(QString, bool)", "on_mxclient2_collectionAdded(QString, bool)", "on_mxclient2_collectionRenamed(QString, QString, bool)"
+
+  signals "stop()", "hidden()", "playingStream()", "playingFile()"
+
+  attr_reader :icon, :xc
+
+  def initialize(w, *args)
+    super(*args)
+    @xc=XClient.new("mxclient2", self)
+    w.setupUi(self)
+    @buttons={}
+    @buttons[:playButton]=findChild(Qt::PushButton, "playButton")
+    @buttons[:stopButton]=findChild(Qt::PushButton, "stopButton")
+    @buttons[:prevButton]=findChild(Qt::PushButton, "prevButton")
+    @buttons[:nextButton]=findChild(Qt::PushButton, "nextButton")
+    @playlist=findChild(Qt::TreeView, "playlistView")
+    @playlistmodel=PlaylistModel.new(@xc)
+    @playlist.model=@playlistmodel
+
+    add_context_menus
+
+    @labels={}
+    @labels[:infoLabel]=findChild(Qt::Label, "infoLabel")
+    @mlibw=findChild(Qt::TreeWidget, "mlibTreeWidget")
+    @mlibw.header.hide
+    populate_mlibwidget
+
+    @collview=findChild(Qt::TreeView, "collView")
+    @collmodel=CollectionModel.new(@xc)
+    @collview.model=@collmodel
+    set_columns_stretch
+    @queryEntry=findChild(Qt::LineEdit, "queryEntry")
+
+    @sawidget=findChild(Qt::Widget, "saveAsWidget")
+    @sawidget.hide
+    # workaround for rbuic bug
+    @sawidget.findChild(Qt::HBoxLayout).setContentsMargins(0,0,0,0)
+    findChild(Qt::Splitter, "splitter").findChild(Qt::VBoxLayout).setContentsMargins(0,0,0,0)
+
+    @tray=MXcTrayIcon.new(self)
+    @tray.show
+
+    connectUI
+  end
+
+  def populate_mlibwidget
+    @tlitems=[Qt::TreeWidgetItem.new(["Playlists"]), Qt::TreeWidgetItem.new(["Collections"])]
+    @tlitems.each do |item|
+      f=item.font(0)
+      f.bold=true
+      item.setFont(0, f)
+      item.setToolTip(0, "<b>#{item.text(0)}</b>")
+    end
+    @mlibw.addTopLevelItems(@tlitems)
+    @xc.get_playlists do |res|
+      res.value.each do |plname|
+        unless plname=="_active"
+          i=Qt::TreeWidgetItem.new(@tlitems[0], [plname])
+          i.setToolTip(0, plname)
+        end
+      end
+    end
+    @xc.get_collections do |res|
+      res.value.each do |colname|
+        i=Qt::TreeWidgetItem.new(@tlitems[1], [colname])
+        i.setToolTip(0, colname)
+      end
+    end
+    @tlitems.each {|item| item.expanded=true}
+  end
+
+  def set_columns_stretch
+    class << @collview
+      def resizeEvent(event)
+        width = (rect.width-30)/3-30
+        setColumnWidth(0, 40)
+        setColumnWidth(1, width+30)
+        setColumnWidth(2, width-20)
+        setColumnWidth(3, width-20)
+        setColumnWidth(4, 40)
+      end
+    end
+    class << @playlist
+      def resizeEvent(event)
+        width = (rect.width-40)/3-15
+        setColumnWidth(0, width+50)
+        setColumnWidth(1, width-25)
+        setColumnWidth(2, width-25)
+        setColumnWidth(3, 15)
+      end
+    end
+  end
+
+  def connectUI
+    connect(@buttons[:playButton], SIGNAL("clicked()"), @xc, SLOT("playback_play_pause()"))
+    connect(@buttons[:stopButton], SIGNAL("clicked()"), @xc, SLOT("playback_stop()"))
+    connect(@buttons[:nextButton], SIGNAL("clicked()"), @xc, SLOT("playlist_next()"))
+    connect(@buttons[:prevButton], SIGNAL("clicked()"), @xc, SLOT("playlist_previous()"))
+    connect(@xc, SIGNAL("playlistShuffle()"), @playlistmodel, SLOT("playlistShuffle()"))
+    connect(@xc, SIGNAL("playlistAdd(int)"), @playlistmodel, SLOT("playlistAdd(int)"))
+    connect(@xc, SIGNAL("playlistRemove(int)"), @playlistmodel, SLOT("playlistRemove(int)"))
+    connect(@xc, SIGNAL("playlistClear()"), @playlistmodel, SLOT("playlistClear()"))
+    connect(@xc, SIGNAL("playlistInsert(int,int)"), @playlistmodel, SLOT("playlistInsert(int,int)"))
+    connect(@xc, SIGNAL("newPlaylistLoaded()"), @playlistmodel, SLOT("reloadPlaylist()"))
+    connect(@playlist, SIGNAL("activated(QModelIndex)"), @xc, SLOT("playlist_play(QModelIndex)"))
+  end
+
+  def add_context_menus
+    @plmenu=Qt::Menu.new(@playlist)
+    @plmenu.addAction("Play", self, SLOT("context_play()"))
+    @plmenu.addAction("Delete", self, SLOT("context_delete()"))
+
+    @mwmenu=Qt::Menu.new(@mlibw)
+    @mwmenu.addAction("Save as playlist", self, SLOT("save_col()"))
+    @mwmenu.addAction("Delete collection", self, SLOT("delete_col()"))
+  end
+
+  def save_col
+
+  end
+
+  def context_play
+    @xc.playlist_play(@contextindex) if @contextindex
+  end
+
+  def context_delete
+    @xc.playlist_remove(@contextindex) if @contextindex
+  end
+
+  def on_playlistView_customContextMenuRequested(point)
+    @contextindex=@playlist.indexAt(point)
+    @contextpos=@contextindex.row
+    @plmenu.exec(@playlist.viewport.mapToGlobal(point))
+  end
+
+  def on_queryEntry_returnPressed
+    coll=Xmms::Collection.parse(@queryEntry.text)
+    @collmodel.setColl(coll)
+    rescue StandardError => e
+    puts e
+  end
+
+  def on_collView_activated(index)
+    @xc.playlist_add(@collmodel.dalist[index.row][:id]).notifier {}
+  end
+
+  def on_mlibTreeWidget_itemClicked(item, col)
+    if item.parent
+      @xc.coll_get(item.text(0)) do |res|
+        begin
+          @collmodel.setColl(res.value)
+        rescue StandardError => e
+          puts e
+        end
+      end
+    end
+  end
+
+  def on_mxclient2_id_changed(id)
+    @xc.handle_meta(id) do |res|
+      dic=res.value
+      if dic[:title]
+        @labels[:infoLabel].setText(%q{<div>„%s” by %s</div><div style="font-size: 15px">from „%s” album</div>}%[dic[:title],dic[:artist],dic[:album]])
+        @labels[:infoLabel].toolTip=%q{<div>„%s” by %s</div><div>from „%s” album</div>}%[dic[:title],dic[:artist],dic[:album]]
+        @tray.toolTip=%q{<div><b>MXC2</b></div>Now Playing: <div>„%s” by %s</div><div>from „%s” album</div>}%[dic[:title],dic[:artist],dic[:album]] if @tray
+      else
+        @labels[:infoLabel].setText(dic[:url].split("/")[-1])
+        @labels[:infoLabel].toolTip=dic[:url].split("/")[-1]
+        @tray.toolTip=%q{<div><b>MXC2</b></div>Now Playing: <div>%s</div>}%[dic[:url].split("/")[-1]]
+      end
+      if dic[:duration]
+        emit playingFile()
+      else
+        emit playingStream()
+      end
+    end
+  end
+
+  def on_mxclient2_stopped
+    @buttons[:stopButton].enabled=false
+    @buttons[:playButton].setIcon(Qt::Icon.new(":/images/play.png"))
+    @buttons[:playButton].toolTip="Play"
+  end
+
+  def on_mxclient2_playing
+    @buttons[:stopButton].enabled=true
+    @buttons[:playButton].setIcon(Qt::Icon.new(":/images/pause.png"))
+    @buttons[:playButton].toolTip="Pause"
+  end
+
+  def on_mxclient2_paused
+    @buttons[:stopButton].enabled=true
+    @buttons[:playButton].setIcon(Qt::Icon.new(":/images/play.png"))
+    @buttons[:playButton].toolTip="Play"
+  end
+
+  def on_mxclient2_collectionAdded(name, isplaylist)
+    if isplaylist
+      tlitem=@tlitems[0]
+    else
+      tlitem=@tlitems[1]
+    end
+    i=Qt::TreeWidgetItem.new(tlitem, [name])
+    i.setToolTip(0, name)
+    tlitem.sortChildren(0, Qt::AscendingOrder)
+  end
+
+  def on_mxclient2_collectionRemoved(name, isplaylist)
+    if isplaylist
+      tlitem=@tlitems[0]
+    else
+      tlitem=@tlitems[1]
+    end
+    children=tlitem.takeChildren
+    children.delete_if {|ch| ch.text(0)==name}
+    tlitem.addChildren children
+  end
+
+  def on_mxclient2_collectionRenamed(oldname, newname, isplaylist)
+    if isplaylist
+      tlitem=@tlitems[0]
+    else
+      tlitem=@tlitems[1]
+    end
+    children=tlitem.takeChildren
+    children.each do |ch|
+      if ch.text(0)==oldname
+        ch.setText(0, newname)
+        ch.setToolTip(0, newname)
+      end
+    end
+    tlitem.addChildren children
+    tlitem.sortChildren(0, Qt::AscendingOrder)
+  end
+
+  def closeEvent(event)
+    if @tray && @tray.visible
+      @tray.show_hide_window
+      emit hidden()
+      event.ignore
+    else
+      $qApp.exit
+    end
+  end
+end
+
+trap("SIGTERM"){
+  puts "sigterm"
+  $qApp.quit
+}
+
+trap("SIGINT"){
+  puts "sigint"
+  $qApp.quit
+}
+
+if $0 ==__FILE__
+  exepath = File.expand_path(__FILE__)
+  x=exepath.split("/")
+  x.delete_at(x.length-1)
+  $path = x.join("/")+"/"
+  $: << $path
+  app=Qt::Application.new ARGV
+  require "xclient.rb"
+  require "res_mxc2.rb"
+  require "ui_mxc2.rb"
+  require "playlistmodel.rb"
+  require "collectionmodel.rb"
+  require "trayicon.rb"
+  x=MxcWin.new(Ui::MXc2.new)
+  x.show
+  app.exec
+end
+
+# vim: set ts=2 sw=2
