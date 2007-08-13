@@ -1,0 +1,12 @@
+<RCC>
+    <qresource prefix="/images" >
+        <file alias="playericon.png">images/icon.png</file>
+        <file alias="note.png" >images/note1-b.png</file>
+        <file alias="next.png">images/player_end.png</file>
+        <file alias="pause.png">images/player_pause.png</file>
+        <file alias="play.png">images/player_play.png</file>
+        <file alias="prev.png">images/player_start.png</file>
+        <file alias="stop.png">images/player_stop.png</file>
+        <file alias="speaker.png" >images/speaker1-b.png</file>
+    </qresource>
+</RCC>
