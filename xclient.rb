@@ -16,10 +16,6 @@ class Class
   end
 end
 
-class Xmms::Collection
-  enum :CHANGED_ADD, :CHANGED_UPDATE, :CHANGED_RENAME, :CHANGED_REMOVE
-end
-
 class XClient <Qt::Object
 
   slots "on_read(int)", "on_write(int)", "putid(int)", "playback_stop()", "playback_play_pause()", "playlist_next()", "playlist_previous()", "playlist_play(QModelIndex)", "playlist_add(QModelIndex)"
@@ -58,22 +54,22 @@ class XClient <Qt::Object
         p hash
       end
     end
-=begin
+
     #handling playlist loads
     @xc.broadcast_playlist_loaded.notifier do |res|
       emit newPlaylistLoaded()
     end
-=end
+
     @xc.broadcast_coll_changed.notifier do |res|
       h=res.value
       case h[:type]
-      when Xmms::Collection::CHANGED_ADD
+      when Xmms::Collection::ADD
         emit collectionAdded(h[:name], h[:namespace]==Xmms::Collection::NS_PLAYLISTS)
-      when Xmms::Collection::CHANGED_UPDATE
+      when Xmms::Collection::UPDATE
         emit collectionUpdated(h[:name], h[:namespace]==Xmms::Collection::NS_PLAYLISTS)
-      when Xmms::Collection::CHANGED_RENAME
+      when Xmms::Collection::RENAME
         emit collectionRenamed(h[:name], h[:newname], h[:namespace]==Xmms::Collection::NS_PLAYLISTS)
-      when Xmms::Collection::CHANGED_REMOVE
+      when Xmms::Collection::_REMOVE
         emit collectionRemoved(h[:name], h[:namespace]==Xmms::Collection::NS_PLAYLISTS)
       end
     end
