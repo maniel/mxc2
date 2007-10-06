@@ -69,7 +69,7 @@ class XClient <Qt::Object
         emit collectionUpdated(h[:name], h[:namespace]==Xmms::Collection::NS_PLAYLISTS)
       when Xmms::Collection::RENAME
         emit collectionRenamed(h[:name], h[:newname], h[:namespace]==Xmms::Collection::NS_PLAYLISTS)
-      when Xmms::Collection::_REMOVE
+      when Xmms::Collection::REMOVE
         emit collectionRemoved(h[:name], h[:namespace]==Xmms::Collection::NS_PLAYLISTS)
       end
     end
