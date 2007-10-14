@@ -20,7 +20,7 @@ class XClient <Qt::Object
 
   slots "on_read(int)", "on_write(int)", "putid(int)", "playback_stop()", "playback_play_pause()", "playlist_next()", "playlist_previous()", "playlist_play(QModelIndex)", "playlist_add(QModelIndex)"
 
-  signals "id_changed(int)", "paused()", "playing()", "stopped()", "playlistClear()", "playlistAdd(int)", "playlistRemove(int)", "playlistMove(int, int)", "playlistInsert(int, int)", "playlistShuffle()", "newPlaylistLoaded()", "collectionAdded(QString, bool)", "collectionUpdated(QString, bool)", "collectionRenamed(QString, QString, bool)", "collectionRemoved(QString, bool)"
+  signals "id_changed(int)", "paused()", "playing()", "stopped()", "playlistClear()", "playlistAdd(int)", "playlistRemove(int)", "playlistMove(int, int)", "playlistInsert(int, int)", "playlistShuffle()", "newPlaylistLoaded()", "collectionAdded(QString, bool)", "collectionUpdated(QString, bool)", "collectionRenamed(QString, QString, bool)", "collectionRemoved(QString, bool)", "playtime(int)"
   attr :playlist
 
   def initialize(name, *args)
@@ -55,6 +55,11 @@ class XClient <Qt::Object
       end
     end
 
+    pltime=0
+    @xc.signal_playback_playtime.notifier do |res|
+      emit playtime(res.value/1000)
+      res.restart
+    end
     #handling playlist loads
     @xc.broadcast_playlist_loaded.notifier do |res|
       emit newPlaylistLoaded()
@@ -85,7 +90,8 @@ class XClient <Qt::Object
       end
     end
     @xc.broadcast_playback_status.notifier do |res|
-      case res.value
+      @status=res.value
+      case @status
       when Xmms::Client::PLAY
         emit playing()
       when Xmms::Client::PAUSE
@@ -121,6 +127,13 @@ class XClient <Qt::Object
         @rsock.enabled=true
         @wsock.enabled=false
       end
+    end
+  end
+
+  def seek(ms)
+    @xc.playback_seek_ms(ms)
+    if @status==Xmms::Client::PAUSE
+      @xc.playback_start
     end
   end
 

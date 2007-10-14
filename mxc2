@@ -17,7 +17,7 @@ $KCODE='u'
 
 class MxcWin < Qt::Widget
 
-  slots "on_mxclient2_id_changed(int)", "on_mxclient2_playing()", "on_mxclient2_stopped()", "on_mxclient2_paused()", "on_mlibTreeWidget_itemClicked(QTreeWidgetItem*, int)", "on_collView_activated(QModelIndex)", "on_queryEntry_returnPressed()", "on_playlistView_customContextMenuRequested(QPoint)", "context_delete()", "context_play()", "on_mxclient2_collectionRemoved(QString, bool)", "on_mxclient2_collectionAdded(QString, bool)", "on_mxclient2_collectionRenamed(QString, QString, bool)"
+  slots "on_mxclient2_id_changed(int)", "on_mxclient2_playing()", "on_mxclient2_stopped()", "on_mxclient2_paused()", "on_mlibTreeWidget_itemClicked(QTreeWidgetItem*, int)", "on_collView_activated(QModelIndex)", "on_queryEntry_returnPressed()", "on_playlistView_customContextMenuRequested(QPoint)", "context_delete()", "context_play()", "on_mxclient2_collectionRemoved(QString, bool)", "on_mxclient2_collectionAdded(QString, bool)", "on_mxclient2_collectionRenamed(QString, QString, bool)","on_mxclient2_playtime(int)", "on_positionSlider_sliderReleased()", "on_positionSlider_actionTrigered(int)"
 
   signals "stop()", "hidden()", "playingStream()", "playingFile()"
 
@@ -40,6 +40,7 @@ class MxcWin < Qt::Widget
 
     @labels={}
     @labels[:infoLabel]=findChild(Qt::Label, "infoLabel")
+    @labels[:timeLabel]=findChild(Qt::Label, "timeLabel")
     @mlibw=findChild(Qt::TreeWidget, "mlibTreeWidget")
     @mlibw.header.hide
     populate_mlibwidget
@@ -50,14 +51,17 @@ class MxcWin < Qt::Widget
     set_columns_stretch
     @queryEntry=findChild(Qt::LineEdit, "queryEntry")
 
+    @pslider=findChild(Qt::Slider, "positionSlider")
     @sawidget=findChild(Qt::Widget, "saveAsWidget")
     @sawidget.hide
     # workaround for rbuic bug
     @sawidget.findChild(Qt::HBoxLayout).setContentsMargins(0,0,0,0)
     findChild(Qt::Splitter, "splitter").findChild(Qt::VBoxLayout).setContentsMargins(0,0,0,0)
 
-    @tray=MXcTrayIcon.new(self)
-    @tray.show
+    if $qApp.arguments.grep(/notray/).empty?
+      @tray=MXcTrayIcon.new(self)
+      @tray.show
+    end
 
     connectUI
   end
@@ -185,20 +189,40 @@ class MxcWin < Qt::Widget
       else
         @labels[:infoLabel].setText(dic[:url].split("/")[-1])
         @labels[:infoLabel].toolTip=dic[:url].split("/")[-1]
-        @tray.toolTip=%q{<div><b>MXC2</b></div>Now Playing: <div>%s</div>}%[dic[:url].split("/")[-1]]
+        @tray.toolTip=%q{<div><b>MXC2</b></div>Now Playing: <div>%s</div>}%[dic[:url].split("/")[-1]] if @tray
       end
       if dic[:duration]
         emit playingFile()
+        i=dic[:duration]/1000
+        @durstr=i/3600 == 0 ? "%02d:%02d"%[(i/ 60) % 60, i % 60] : "%d:%02d:%02d"%[i/3600, (i/ 60) % 60, i % 60]
+        @pslider.enabled=true
+        @pslider.setRange(0, i)
       else
         emit playingStream()
+        @durstr="-"
+        @pslider.enabled=false
       end
     end
+  end
+
+  def on_positionSlider_sliderReleased()
+    @xc.seek(@pslider.value*1000)
+  end
+
+  def on_positionSlider_actionTrigered(a)
+    puts a
   end
 
   def on_mxclient2_stopped
     @buttons[:stopButton].enabled=false
     @buttons[:playButton].setIcon(Qt::Icon.new(":/images/play.png"))
     @buttons[:playButton].toolTip="Play"
+  end
+
+  def on_mxclient2_playtime(i)
+    @labels[:timeLabel].text=i/3600 == 0 ? "%02d:%02d/%s"%[(i/ 60) % 60, i % 60, @durstr] :
+    "%d:%02d:%02d/%s"%[i/3600, (i/ 60) % 60, i % 60, @durstr]
+    @pslider.setValue(i) unless @pslider.sliderDown
   end
 
   def on_mxclient2_playing
