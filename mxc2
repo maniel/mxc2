@@ -17,7 +17,7 @@ $KCODE='u'
 
 class MxcWin < Qt::Widget
 
-  slots "on_mxclient2_id_changed(int)", "on_mxclient2_playing()", "on_mxclient2_stopped()", "on_mxclient2_paused()", "on_mlibTreeWidget_itemClicked(QTreeWidgetItem*, int)", "on_collView_activated(QModelIndex)", "on_queryEntry_returnPressed()", "on_playlistView_customContextMenuRequested(QPoint)", "context_delete()", "context_play()", "on_mxclient2_collectionRemoved(QString, bool)", "on_mxclient2_collectionAdded(QString, bool)", "on_mxclient2_collectionRenamed(QString, QString, bool)","on_mxclient2_playtime(int)", "on_positionSlider_sliderReleased()", "on_positionSlider_actionTrigered(int)"
+  slots "on_mxclient2_id_changed(int)", "on_mxclient2_playing()", "on_mxclient2_stopped()", "on_mxclient2_paused()", "on_mlibTreeWidget_itemClicked(QTreeWidgetItem*, int)", "on_collView_activated(QModelIndex)", "on_queryEntry_returnPressed()", "on_playlistView_customContextMenuRequested(QPoint)", "context_delete()", "context_play()", "on_mxclient2_collectionRemoved(QString, bool)", "on_mxclient2_collectionAdded(QString, bool)", "on_mxclient2_collectionRenamed(QString, QString, bool)","on_mxclient2_playtime(int)", "on_positionSlider_sliderReleased()"
 
   signals "stop()", "hidden()", "playingStream()", "playingFile()"
 

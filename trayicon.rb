@@ -15,16 +15,16 @@ class MXcTrayIcon < Qt::SystemTrayIcon
   def initialize(*args)
     super(*args)
     setObjectName("trayIcon")
-    @icon=Qt::Icon.new(":/images/note.png")
+    @icon=Qt::Icon.new(":/images/logo.svg")
     setIcon(@icon)
     @xc=parent.xc
     @menu=Qt::Menu.new
     setContextMenu(@menu)
     @actions={}
-    @actions[:play]=@menu.addAction("Play",@xc, SLOT("playback_play_pause()"))
-    @actions[:stop]=@menu.addAction("Stop",@xc, SLOT("playback_stop()"))
-    @actions[:next]=@menu.addAction("Next",@xc, SLOT("playlist_next()"))
-    @actions[:prev]=@menu.addAction("Prev",@xc, SLOT("playlist_previous()"))
+    @actions[:play]=@menu.addAction(Qt::Icon.new(":/images/play.png"),"Play",@xc, SLOT("playback_play_pause()"))
+    @actions[:stop]=@menu.addAction(Qt::Icon.new(":/images/stop.png"),"Stop",@xc, SLOT("playback_stop()"))
+    @actions[:next]=@menu.addAction(Qt::Icon.new(":/images/next.png"),"Next",@xc, SLOT("playlist_next()"))
+    @actions[:prev]=@menu.addAction(Qt::Icon.new(":/images/prev.png"),"Previous",@xc, SLOT("playlist_previous()"))
     @menu.addSeparator
     @actions[:show_hide]=@menu.addAction(parent.visible ? "Show":"Hide", self, SLOT("show_hide_window()"))
     @actions[:quit]=@menu.addAction("Quit", $qApp, SLOT("quit()"))
@@ -37,16 +37,19 @@ class MXcTrayIcon < Qt::SystemTrayIcon
   end
 
   def on_playing
+    @actions[:play].setIcon(Qt::Icon.new(":/images/pause.png"))
     @actions[:play].setText("Pause")
     @actions[:stop].enabled=true
   end
 
   def on_stopped
+    @actions[:play].setIcon(Qt::Icon.new(":/images/play.png"))
     @actions[:play].setText("Play")
     @actions[:stop].enabled=false
   end
 
   def on_paused
+    @actions[:play].setIcon(Qt::Icon.new(":/images/play.png"))
     @actions[:play].setText("Play")
     @actions[:stop].enabled=true
   end

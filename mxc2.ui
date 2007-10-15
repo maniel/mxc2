@@ -13,7 +13,7 @@
    <string>MXC2</string>
   </property>
   <property name="windowIcon" >
-   <iconset resource="mxc2.qrc" >:/images/playericon.png</iconset>
+   <iconset resource="mxc2.qrc" >:/images/logo.svg</iconset>
   </property>
   <property name="layoutDirection" >
    <enum>Qt::LeftToRight</enum>
