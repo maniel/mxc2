@@ -303,7 +303,6 @@ if $0 ==__FILE__
   x.delete_at(x.length-1)
   path = x.join("/")+"/"
   $: << path
-	p [path,$:]
   app=Qt::Application.new ARGV
   require "xclient.rb"
   require "res_mxc2.rb"
