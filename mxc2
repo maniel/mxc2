@@ -301,8 +301,9 @@ if $0 ==__FILE__
   exepath = File.expand_path(__FILE__)
   x=exepath.split("/")
   x.delete_at(x.length-1)
-  $path = x.join("/")+"/"
-  $: << $path
+  path = x.join("/")+"/"
+  $: << path
+	p [path,$:]
   app=Qt::Application.new ARGV
   require "xclient.rb"
   require "res_mxc2.rb"
