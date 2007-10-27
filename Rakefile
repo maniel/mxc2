@@ -9,8 +9,8 @@ file "ui_mxc2.rb" => ["mxc2.ui"] do
 end
 
 desc "serialize resources to res_mxc2.rb file"
-file "res_mxc2.rb" => ["mxc2.qrc"]  do |t|
-	sh %{rbrcc #{t.prerequisites} -compress 9 -o #{t.name}}
+file "res_mxc2.rb" => ["mxc2.qrc", *Dir.glob("images/*")]  do |t|
+	sh %{rbrcc mxc2.qrc -compress 9 -o res_mxc2.rb}
 end
 
 desc "clean build directory"
