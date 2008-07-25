@@ -1,1 +1,3 @@
+MXC2 is xmms2 client written in qt4-qtruby. In the near future it should be fully featured client [will provide full xmms2 functionality]
+
 Just run rake and then ./mxc2
